@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { fetchOrderOverview } from '@/services/orderService';
 import { formatCurrency, formatDate } from '@/utils/order-helpers';
-import { Search, X } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Search, X } from 'lucide-react-native';
 
 interface OrderOverviewProps {
   orderId: string;
@@ -23,6 +23,10 @@ interface SearchOption {
   section: string;
 }
 
+interface CollapsibleSections {
+  [key: string]: boolean;
+}
+
 const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
   const [orderData, setOrderData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -31,6 +35,21 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
   const [searchFocused, setSearchFocused] = useState<boolean>(false);
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
   const [filteredOptions, setFilteredOptions] = useState<SearchOption[]>([]);
+  const [expandedSections, setExpandedSections] = useState<CollapsibleSections>(
+    {
+      exporter: false,
+      customer: false,
+      consignee: false,
+      order_details: false,
+      item_details: false,
+      packaging_details: false,
+      shipment_details: false,
+      bl_details: false,
+      payment_details: false,
+      remarks: false,
+      estimates: false,
+    }
+  );
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: string]: any }>({});
 
@@ -260,16 +279,33 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
     setSearchOptions(options);
   };
 
+  // Toggle section expansion
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prevState) => ({
+      ...prevState,
+      [sectionKey]: !prevState[sectionKey],
+    }));
+  };
+
   // Scroll to section when search option is selected
   const scrollToSection = (sectionKey: string) => {
     if (sectionRefs.current[sectionKey] && scrollViewRef.current) {
-      sectionRefs.current[sectionKey].measureLayout(
-        scrollViewRef.current,
-        (_: number, y: number) => {
-          scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
-        },
-        () => console.log('Failed to measure layout')
-      );
+      // Expand the section first
+      setExpandedSections((prevState) => ({
+        ...prevState,
+        [sectionKey]: true,
+      }));
+
+      // Then scroll to it after a short delay to ensure content is rendered
+      setTimeout(() => {
+        sectionRefs.current[sectionKey].measureLayout(
+          scrollViewRef.current,
+          (_: number, y: number) => {
+            scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+          },
+          () => console.log('Failed to measure layout')
+        );
+      }, 100);
     }
 
     // Clear search after navigating
@@ -363,19 +399,6 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
         </View>
 
         {/* Search Results Dropdown */}
-        {/* {searchFocused && filteredOptions.length > 0 && (
-          <View style={styles.searchResultsContainer}>
-            {filteredOptions.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={styles.searchResultItem}
-                onPress={() => scrollToSection(option.section)}
-              >
-                <Text style={styles.searchResultText}>{option.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )} */}
         {searchFocused && filteredOptions.length > 0 && (
           <ScrollView
             style={styles.searchResultsContainer}
@@ -407,21 +430,33 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['exporter'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('exporter')}
+          >
             <View style={styles.redBarLeft} />
             <Text style={styles.sectionTitle}>Exporter</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <Text style={styles.companyName}>
-              {orderData.elchemy_entity?.name || 'N/A'}
-            </Text>
-            <Text style={styles.companyAddress}>
-              {orderData.elchemy_entity?.address || 'N/A'}
-            </Text>
-            <Text style={styles.companyGst}>
-              GST - {orderData.elchemy_entity?.gst_number || 'N/A'}
-            </Text>
-          </View>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.exporter ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {expandedSections.exporter && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.companyName}>
+                {orderData.elchemy_entity?.name || 'N/A'}
+              </Text>
+              <Text style={styles.companyAddress}>
+                {orderData.elchemy_entity?.address || 'N/A'}
+              </Text>
+              <Text style={styles.companyGst}>
+                GST - {orderData.elchemy_entity?.gst_number || 'N/A'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Customer */}
@@ -431,24 +466,36 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['customer'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('customer')}
+          >
             <View style={styles.redBarLeft} />
             <Text style={styles.sectionTitle}>Customer</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <Text style={styles.companyName}>
-              {orderData.customer_name || 'N/A'}
-            </Text>
-            <Text style={styles.companyAddress}>
-              {orderData.customer_address?.readable_address || 'N/A'}
-            </Text>
-            <Text style={styles.contactInfo}>
-              Tel: {orderData.customer_poc?.phone_number || 'N/A'}
-            </Text>
-            <Text style={styles.contactInfo}>
-              Email: {orderData.customer_poc?.email || 'N/A'}
-            </Text>
-          </View>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.customer ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {expandedSections.customer && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.companyName}>
+                {orderData.customer_name || 'N/A'}
+              </Text>
+              <Text style={styles.companyAddress}>
+                {orderData.customer_address?.readable_address || 'N/A'}
+              </Text>
+              <Text style={styles.contactInfo}>
+                Tel: {orderData.customer_poc?.phone_number || 'N/A'}
+              </Text>
+              <Text style={styles.contactInfo}>
+                Email: {orderData.customer_poc?.email || 'N/A'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Consignee */}
@@ -458,21 +505,33 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['consignee'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('consignee')}
+          >
             <View style={styles.redBarLeft} />
             <Text style={styles.sectionTitle}>Consignee</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <Text style={styles.companyName}>
-              {orderData.consignee_name || 'N/A'}
-            </Text>
-            <Text style={styles.companyAddress}>
-              {orderData.consignee_office_address || 'N/A'}
-            </Text>
-            <Text style={styles.contactInfo}>
-              Tel: {orderData.consignee_phone_number || 'N/A'}
-            </Text>
-          </View>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.consignee ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {expandedSections.consignee && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.companyName}>
+                {orderData.consignee_name || 'N/A'}
+              </Text>
+              <Text style={styles.companyAddress}>
+                {orderData.consignee_office_address || 'N/A'}
+              </Text>
+              <Text style={styles.contactInfo}>
+                Tel: {orderData.consignee_phone_number || 'N/A'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Order Details */}
@@ -482,75 +541,88 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['order_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('order_details')}
+          >
             <Text style={styles.sectionTitle}>Order Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Mode of Transportation</Text>
-              <Text style={styles.detailValue}>
-                {orderData.transportation_mode_display_value || 'N/A'}
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.order_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
+          </TouchableOpacity>
+          {expandedSections.order_details && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Mode of Transportation</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.transportation_mode_display_value || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Inco Terms</Text>
-              <Text style={styles.detailValue}>
-                {orderData.inco_terms_display_value || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Inco Terms</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.inco_terms_display_value || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Country of Origin</Text>
-              <Text style={styles.detailValue}>
-                {orderData.country_of_origin_display_value || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Country of Origin</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.country_of_origin_display_value || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>
-                Country of Final Destination
-              </Text>
-              <Text style={styles.detailValue}>
-                {orderData.country_of_final_destination_display_value || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>
+                  Country of Final Destination
+                </Text>
+                <Text style={styles.detailValue}>
+                  {orderData.country_of_final_destination_display_value ||
+                    'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Port of Loading</Text>
-              <Text style={styles.detailValue}>
-                {orderData.port_of_loading_display_value} -{' '}
-                {orderData.port_of_loading_country_display_value || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Port of Loading</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.port_of_loading_display_value} -{' '}
+                  {orderData.port_of_loading_country_display_value || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Port of Discharge</Text>
-              <Text style={styles.detailValue}>
-                {orderData.port_of_discharge_display_value} -{' '}
-                {orderData.port_of_discharge_country_display_value || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Port of Discharge</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.port_of_discharge_display_value} -{' '}
+                  {orderData.port_of_discharge_country_display_value || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Place of Delivery</Text>
-              <Text style={styles.detailValue}>
-                {orderData.place_of_delivery || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Place of Delivery</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.place_of_delivery || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>PO Reference Number</Text>
-              <Text style={styles.detailValue}>
-                {orderData.po_reference_no || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>PO Reference Number</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.po_reference_no || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>PO Date</Text>
-              <Text style={styles.detailValue}>Not Available</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>PO Date</Text>
+                <Text style={styles.detailValue}>Not Available</Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Item Details */}
@@ -560,70 +632,84 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['item_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('item_details')}
+          >
             <Text style={styles.sectionTitle}>Item Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            {orderData.order_item &&
-              orderData.order_item.map((item: any, index: number) => (
-                <View key={item.order_item_id} style={styles.itemContainer}>
-                  <Text style={styles.itemTitle}>
-                    {formatItemName(item.product_name, index)}
-                  </Text>
-                  <Text style={styles.itemDetails}>{item.package_details}</Text>
-                  <Text style={styles.itemDetails}>
-                    Origin: {item.country_of_origin_display_value}
-                  </Text>
-                  <Text style={styles.itemDetails}>
-                    HS Code: {item.hs_code}
-                  </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.item_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {expandedSections.item_details && (
+            <View style={styles.sectionContent}>
+              {orderData.order_item &&
+                orderData.order_item.map((item: any, index: number) => (
+                  <View key={item.order_item_id} style={styles.itemContainer}>
+                    <Text style={styles.itemTitle}>
+                      {formatItemName(item.product_name, index)}
+                    </Text>
+                    <Text style={styles.itemDetails}>
+                      {item.package_details}
+                    </Text>
+                    <Text style={styles.itemDetails}>
+                      Origin: {item.country_of_origin_display_value}
+                    </Text>
+                    <Text style={styles.itemDetails}>
+                      HS Code: {item.hs_code}
+                    </Text>
 
-                  <View style={styles.itemPriceContainer}>
-                    <View style={styles.itemPriceColumn}>
-                      <Text style={styles.itemPriceLabel}>Quantity</Text>
-                      <Text style={styles.itemPriceValue}>
-                        {parseFloat(item.quantity).toFixed(4)} MT
-                      </Text>
-                    </View>
+                    <View style={styles.itemPriceContainer}>
+                      <View style={styles.itemPriceColumn}>
+                        <Text style={styles.itemPriceLabel}>Quantity</Text>
+                        <Text style={styles.itemPriceValue}>
+                          {parseFloat(item.quantity).toFixed(4)} MT
+                        </Text>
+                      </View>
 
-                    <View style={styles.itemPriceColumn}>
-                      <Text style={styles.itemPriceLabel}>Price/Unit</Text>
-                      <Text style={styles.itemPriceValue}>
-                        USD {parseFloat(item.selling_price).toFixed(2)}
-                      </Text>
-                    </View>
+                      <View style={styles.itemPriceColumn}>
+                        <Text style={styles.itemPriceLabel}>Price/Unit</Text>
+                        <Text style={styles.itemPriceValue}>
+                          USD {parseFloat(item.selling_price).toFixed(2)}
+                        </Text>
+                      </View>
 
-                    <View style={styles.itemPriceColumn}>
-                      <Text style={styles.itemPriceLabel}>Total Amount</Text>
-                      <Text style={styles.itemPriceValue}>
-                        USD {parseFloat(item.total_amount).toFixed(2)}
-                      </Text>
+                      <View style={styles.itemPriceColumn}>
+                        <Text style={styles.itemPriceLabel}>Total Amount</Text>
+                        <Text style={styles.itemPriceValue}>
+                          USD {parseFloat(item.total_amount).toFixed(2)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ))}
+                ))}
 
-            {/* Custom Items (Freight, Insurance, etc.) */}
-            {orderData.custom_items &&
-              orderData.custom_items.map((item: any) => (
-                <View key={item.custom_item_id} style={styles.customItemRow}>
-                  <Text style={styles.customItemName}>{item.name}</Text>
-                  <Text style={styles.customItemValue}>
-                    USD {parseFloat(item.amount).toFixed(2)}
-                  </Text>
-                </View>
-              ))}
+              {/* Custom Items (Freight, Insurance, etc.) */}
+              {orderData.custom_items &&
+                orderData.custom_items.map((item: any) => (
+                  <View key={item.custom_item_id} style={styles.customItemRow}>
+                    <Text style={styles.customItemName}>{item.name}</Text>
+                    <Text style={styles.customItemValue}>
+                      USD {parseFloat(item.amount).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
 
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>
-                Total: USD {parseFloat(orderData.total).toFixed(2)}
-              </Text>
-              <Text style={styles.totalInWords}>
-                Amount in words: USD{' '}
-                {numberToWords(parseFloat(orderData.total))}
-              </Text>
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>
+                  Total: USD {parseFloat(orderData.total).toFixed(2)}
+                </Text>
+                <Text style={styles.totalInWords}>
+                  Amount in words: USD{' '}
+                  {numberToWords(parseFloat(orderData.total))}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Packaging Details */}
@@ -633,38 +719,50 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['packaging_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('packaging_details')}
+          >
             <Text style={styles.sectionTitle}>Packaging Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Gross Weight</Text>
-              <Text style={styles.detailValue}>
-                {orderData.total_gross_wt_in_KG} KG
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.packaging_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
+          </TouchableOpacity>
+          {expandedSections.packaging_details && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Gross Weight</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.total_gross_wt_in_KG} KG
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Net Weight</Text>
-              <Text style={styles.detailValue}>
-                {orderData.total_net_wt_in_KG} KG
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Net Weight</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.total_net_wt_in_KG} KG
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>No of Pallets</Text>
-              <Text style={styles.detailValue}>
-                {orderData.total_pallets_packed}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>No of Pallets</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.total_pallets_packed}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Palletization</Text>
-              <Text style={styles.detailValue}>
-                {orderData.palletization ? 'Yes' : 'No'}
-              </Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Palletization</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.palletization ? 'Yes' : 'No'}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Shipment Details */}
@@ -674,51 +772,64 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['shipment_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('shipment_details')}
+          >
             <Text style={styles.sectionTitle}>Shipment Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Vessel Name</Text>
-              <Text style={styles.detailValue}>
-                {orderData.vessel_name || 'N/A'}
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.shipment_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
+          </TouchableOpacity>
+          {expandedSections.shipment_details && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Vessel Name</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.vessel_name || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Voyage Number</Text>
-              <Text style={styles.detailValue}>
-                {orderData.voyage_number || 'Not Available'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Voyage Number</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.voyage_number || 'Not Available'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Shipping Line</Text>
-              <Text style={styles.detailValue}>
-                {orderData.shipping_line || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Shipping Line</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.shipping_line || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Container Details</Text>
-              <Text style={styles.detailValue}>
-                {orderData.container_info && orderData.container_info.length > 0
-                  ? `${orderData.container_info[0].no_of_container} X ${orderData.container_info[0].container_type}`
-                  : 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Container Details</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.container_info &&
+                  orderData.container_info.length > 0
+                    ? `${orderData.container_info[0].no_of_container} X ${orderData.container_info[0].container_type}`
+                    : 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Container Numbers</Text>
-              <Text style={styles.detailValue}>
-                {orderData.container_info &&
-                orderData.container_info.length > 0 &&
-                orderData.container_info[0].container_numbers
-                  ? orderData.container_info[0].container_numbers.join(', ')
-                  : 'N/A'}
-              </Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Container Numbers</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.container_info &&
+                  orderData.container_info.length > 0 &&
+                  orderData.container_info[0].container_numbers
+                    ? orderData.container_info[0].container_numbers.join(', ')
+                    : 'N/A'}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* BL Details */}
@@ -728,25 +839,37 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['bl_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('bl_details')}
+          >
             <Text style={styles.sectionTitle}>BL Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>BL Number</Text>
-              <Text style={styles.detailValue}>
-                {orderData.bl_number || 'Not Available'}
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.bl_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>BL Date</Text>
-              <Text style={styles.detailValue}>
-                {orderData.bl_date
-                  ? formatDate(orderData.bl_date)
-                  : 'Not Available'}
-              </Text>
+          </TouchableOpacity>
+          {expandedSections.bl_details && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>BL Number</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.bl_number || 'Not Available'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>BL Date</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.bl_date
+                    ? formatDate(orderData.bl_date)
+                    : 'Not Available'}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Payment Details */}
@@ -756,23 +879,35 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['payment_details'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('payment_details')}
+          >
             <Text style={styles.sectionTitle}>Payment Details</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment Term</Text>
-              <Text style={styles.detailValue}>
-                {orderData.payment_terms_display_value || 'N/A'}
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.payment_details ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>
-                Export Bill Bank Reference Number
-              </Text>
-              <Text style={styles.detailValue}>Not Available</Text>
+          </TouchableOpacity>
+          {expandedSections.payment_details && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Payment Term</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.payment_terms_display_value || 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>
+                  Export Bill Bank Reference Number
+                </Text>
+                <Text style={styles.detailValue}>Not Available</Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Remarks */}
@@ -782,33 +917,45 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['remarks'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('remarks')}
+          >
             <Text style={styles.sectionTitle}>Remarks</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>
-                Customer Additional Remarks
-              </Text>
-              <Text style={styles.detailValue}>
-                {orderData.additional_remarks || 'Not Available'}
-              </Text>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.remarks ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>CI Remarks</Text>
-              <Text style={styles.detailValue}>
-                {orderData.ci_remarks || 'Not Available'}
-              </Text>
+          </TouchableOpacity>
+          {expandedSections.remarks && (
+            <View style={styles.sectionContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>
+                  Customer Additional Remarks
+                </Text>
+                <Text style={styles.detailValue}>
+                  {orderData.additional_remarks || 'Not Available'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>CI Remarks</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.ci_remarks || 'Not Available'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>PI Remarks</Text>
+                <Text style={styles.detailValue}>
+                  {orderData.pi_remarks
+                    ? getPIRemarks(orderData.pi_remarks)
+                    : 'Not Available'}
+                </Text>
+              </View>
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>PI Remarks</Text>
-              <Text style={styles.detailValue}>
-                {orderData.pi_remarks
-                  ? getPIRemarks(orderData.pi_remarks)
-                  : 'Not Available'}
-              </Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Estimates */}
@@ -818,68 +965,80 @@ const OrderOverview: React.FC<OrderOverviewProps> = ({ orderId }) => {
             sectionRefs.current['estimates'] = ref;
           }}
         >
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection('estimates')}
+          >
             <Text style={styles.sectionTitle}>Estimates</Text>
-          </View>
-          <View style={styles.sectionContent}>
-            <View style={styles.estimatesTable}>
-              <View style={styles.estimatesHeader}>
-                <Text style={[styles.estimatesHeaderCell, { flex: 2 }]}>
-                  State Type
-                </Text>
-                <Text style={[styles.estimatesHeaderCell, { flex: 2 }]}>
-                  Estimated Date
-                </Text>
-                <Text style={[styles.estimatesHeaderCell, { flex: 1 }]}>
-                  Status
-                </Text>
-              </View>
+            <View style={styles.expandIconContainer}>
+              {expandedSections.estimates ? (
+                <ChevronUp size={20} color="#6B7280" />
+              ) : (
+                <ChevronDown size={20} color="#6B7280" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {expandedSections.estimates && (
+            <View style={styles.sectionContent}>
+              <View style={styles.estimatesTable}>
+                <View style={styles.estimatesHeader}>
+                  <Text style={[styles.estimatesHeaderCell, { flex: 2 }]}>
+                    State Type
+                  </Text>
+                  <Text style={[styles.estimatesHeaderCell, { flex: 2 }]}>
+                    Estimated Date
+                  </Text>
+                  <Text style={[styles.estimatesHeaderCell, { flex: 1 }]}>
+                    Status
+                  </Text>
+                </View>
 
-              {orderData.task_estimates &&
-                orderData.task_estimates.map((task: any) => {
-                  const isCompleted = task.actual_date !== null;
-                  const estimatedDate = task.estimated_date
-                    ? formatDate(task.estimated_date)
-                    : '-';
+                {orderData.task_estimates &&
+                  orderData.task_estimates.map((task: any) => {
+                    const isCompleted = task.actual_date !== null;
+                    const estimatedDate = task.estimated_date
+                      ? formatDate(task.estimated_date)
+                      : '-';
 
-                  // Calculate delay in days if both dates are available
-                  let delay = '-';
-                  if (task.actual_date && task.estimated_date) {
-                    const actualDate = new Date(task.actual_date);
-                    const estDate = new Date(task.estimated_date);
-                    const diffTime = actualDate.getTime() - estDate.getTime();
-                    const diffDays = Math.ceil(
-                      diffTime / (1000 * 60 * 60 * 24)
-                    );
-                    if (diffDays > 0) {
-                      delay = diffDays.toString();
+                    // Calculate delay in days if both dates are available
+                    let delay = '-';
+                    if (task.actual_date && task.estimated_date) {
+                      const actualDate = new Date(task.actual_date);
+                      const estDate = new Date(task.estimated_date);
+                      const diffTime = actualDate.getTime() - estDate.getTime();
+                      const diffDays = Math.ceil(
+                        diffTime / (1000 * 60 * 60 * 24)
+                      );
+                      if (diffDays > 0) {
+                        delay = diffDays.toString();
+                      }
                     }
-                  }
 
-                  return (
-                    <View key={task.id} style={styles.estimatesRow}>
-                      <View style={[styles.estimatesCell, { flex: 2 }]}>
-                        <Text style={styles.estimatesCellText}>
-                          {task.state_type_value}
-                        </Text>
-                      </View>
-                      <View style={[styles.estimatesCell, { flex: 2 }]}>
-                        <Text style={styles.estimatesCellText}>
-                          {estimatedDate}
-                        </Text>
-                      </View>
-                      <View style={[styles.estimatesCell, { flex: 1 }]}>
-                        <View style={getStatusClass(task.actual_date, delay)}>
-                          <Text style={styles.statusText}>
-                            {getStatusText(task.actual_date, delay)}
+                    return (
+                      <View key={task.id} style={styles.estimatesRow}>
+                        <View style={[styles.estimatesCell, { flex: 2 }]}>
+                          <Text style={styles.estimatesCellText}>
+                            {task.state_type_value}
                           </Text>
                         </View>
+                        <View style={[styles.estimatesCell, { flex: 2 }]}>
+                          <Text style={styles.estimatesCellText}>
+                            {estimatedDate}
+                          </Text>
+                        </View>
+                        <View style={[styles.estimatesCell, { flex: 1 }]}>
+                          <View style={getStatusClass(task.actual_date, delay)}>
+                            <Text style={styles.statusText}>
+                              {getStatusText(task.actual_date, delay)}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -917,6 +1076,14 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  expandIconContainer: {
+    marginLeft: 'auto', // Pushes the icon to the right side
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
   },
   container: {
     flex: 1,
