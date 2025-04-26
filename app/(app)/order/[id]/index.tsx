@@ -337,12 +337,8 @@ export default function OrderDetails() {
             </View>
           </View>
         </View>
-
-        {/* Render the active tab content */}
-        <View style={styles.tabContentContainer}>{renderTabContent()}</View>
       </ScrollView>
-
-      {/* Bottom Tabs */}
+      {/* Tabs for different sections */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TouchableOpacity
@@ -448,6 +444,8 @@ export default function OrderDetails() {
           </TouchableOpacity>
         </ScrollView>
       </View>
+      {/* Render the active tab content */}
+      <View style={styles.tabContentContainer}>{renderTabContent()}</View>
     </View>
   );
 }
